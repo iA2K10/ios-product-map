@@ -15,7 +15,7 @@ import {
 import '@xyflow/react/dist/style.css'
 
 import data from './data.json'
-import { roadmapTabs } from './roadmapData'
+import { navSections, sharedFlows, crossFlowLinks } from './roadmapData'
 import { CenterNode } from './nodes/CenterNode'
 import { CategoryNode } from './nodes/CategoryNode'
 import { FlowNode } from './nodes/FlowNode'
@@ -29,7 +29,6 @@ const nodeTypes = {
   center: CenterNode,
   category: CategoryNode,
   flow: FlowNode,
-  group: FlowNode,
   screen: ScreenNode,
   tab: TabNode,
 }
@@ -97,31 +96,37 @@ function buildFeatureGraph(): { nodes: Node[]; edges: Edge[] } {
   return { nodes: layoutNodes(nodes, edges, 'LR'), edges }
 }
 
-// ─── ROADMAP VIEW ───
+// ─── PRODUCT MAP VIEW ───
 
-function buildRoadmapGraph(): { nodes: Node[]; edges: Edge[] } {
+function buildProductMapGraph(): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = []
   const edges: Edge[] = []
-  const allFlows = data.flows as Record<string, FlowData>
+  const allFlowsData = data.flows as Record<string, FlowData>
+  const allSections = [...navSections, ...sharedFlows]
 
+  // Center node
   nodes.push({ id: 'center', type: 'center', position: { x: 0, y: 0 }, data: { label: 'Mercari iOS App' } })
 
-  roadmapTabs.forEach((tab) => {
-    const tabId = `tab-${tab.name}`
+  // Tab nodes for each section
+  allSections.forEach((section) => {
+    const tabId = `tab-${section.name}`
     let totalScreens = 0
-    tab.groups.forEach(g => g.flows.forEach(fn => {
-      const f = allFlows[fn]
-      if (f) totalScreens += f.screens.length
-    }))
+    section.flows.forEach(fn => { const f = allFlowsData[fn]; if (f) totalScreens += f.screens.length })
 
     nodes.push({
       id: tabId, type: 'tab', position: { x: 0, y: 0 },
-      data: { label: tab.name, icon: tab.icon, groupCount: tab.groups.length, screenCount: totalScreens, color: tab.color },
+      data: { label: section.name, icon: section.icon, groupCount: section.flows.length, screenCount: totalScreens, color: section.color },
     })
-    edges.push({ id: `e-center-${tabId}`, source: 'center', sourceHandle: 'right', target: tabId, style: { stroke: tab.color, strokeWidth: 2, opacity: EDGE_OPACITY } })
+    edges.push({ id: `e-center-${tabId}`, source: 'center', sourceHandle: 'right', target: tabId, style: { stroke: section.color, strokeWidth: 2, opacity: EDGE_OPACITY } })
   })
 
   return { nodes: layoutNodes(nodes, edges, 'LR'), edges }
+}
+
+function getFlowColor(flowName: string): string {
+  const allSections = [...navSections, ...sharedFlows]
+  const section = allSections.find(s => s.flows.includes(flowName))
+  return section?.color || '#4a5068'
 }
 
 // ─── helpers for adding screens to a flow ───
@@ -161,10 +166,9 @@ function ProductMap() {
   const expandedCatsRef = useRef<Set<string>>(new Set())
   const expandedFlowsRef = useRef<Set<string>>(new Set())
 
-  // Roadmap view refs
+  // Product map view refs
   const expandedTabsRef = useRef<Set<string>>(new Set())
-  const expandedGroupsRef = useRef<Set<string>>(new Set())
-  const expandedRoadmapFlowsRef = useRef<Set<string>>(new Set())
+  const expandedMapFlowsRef = useRef<Set<string>>(new Set())
 
   const [selectedScreen, setSelectedScreen] = useState<ScreenData | null>(null)
   const [selectedFlow, setSelectedFlow] = useState<FlowData | null>(null)
@@ -226,70 +230,46 @@ function ProductMap() {
     }
   }, [setNodes, setEdges, allFlows, relayoutAfterChange])
 
-  // ─── ROADMAP VIEW: toggle tab ───
+  // ─── PRODUCT MAP: toggle tab (shows flows directly) ───
   const toggleTab = useCallback((tabName: string) => {
-    const tab = roadmapTabs.find(t => t.name === tabName); if (!tab || tab.groups.length === 0) return
+    const allSections = [...navSections, ...sharedFlows]
+    const section = allSections.find(s => s.name === tabName); if (!section || section.flows.length === 0) return
 
     if (expandedTabsRef.current.has(tabName)) {
       expandedTabsRef.current.delete(tabName)
-      const groupIds = new Set(tab.groups.map(g => `group-${tabName}-${g.name}`))
-      const flowIds = new Set<string>(); const screenIds = new Set<string>()
-      tab.groups.forEach(g => g.flows.forEach(fn => {
-        flowIds.add(`rflow-${fn}`); expandedGroupsRef.current.delete(`${tabName}-${g.name}`); expandedRoadmapFlowsRef.current.delete(fn)
-        const f = allFlows[fn]; if (f) f.screens.forEach(s => screenIds.add(`screen-${s.id}`))
-      }))
+      const flowIds = new Set(section.flows.map(fn => `mflow-${fn}`))
+      const screenIds = new Set<string>()
+      section.flows.forEach(fn => { expandedMapFlowsRef.current.delete(fn); const f = allFlows[fn]; if (f) f.screens.forEach(s => screenIds.add(`screen-${s.id}`)) })
 
       setNodes(curr => {
-        const next = curr.filter(n => !groupIds.has(n.id) && !flowIds.has(n.id) && !screenIds.has(n.id))
-        setEdges(ce => { const ne = ce.filter(e => !groupIds.has(e.source) && !groupIds.has(e.target) && !flowIds.has(e.source) && !flowIds.has(e.target) && !screenIds.has(e.source) && !screenIds.has(e.target)); relayoutAfterChange(next, ne); return ne })
+        const next = curr.filter(n => !flowIds.has(n.id) && !screenIds.has(n.id))
+        setEdges(ce => {
+          const ne = ce.filter(e => !flowIds.has(e.source) && !flowIds.has(e.target) && !screenIds.has(e.source) && !screenIds.has(e.target))
+          relayoutAfterChange(next, ne); return ne
+        })
         return next
       })
     } else {
       expandedTabsRef.current.add(tabName)
       setNodes(curr => {
         const ids = new Set(curr.map(n => n.id)); const nn: Node[] = []; const ne: Edge[] = []
-        tab.groups.forEach(g => {
-          const gid = `group-${tabName}-${g.name}`
-          if (ids.has(gid)) return
-          let sc = 0; g.flows.forEach(fn => { const f = allFlows[fn]; if (f) sc += f.screens.length })
-          nn.push({ id: gid, type: 'group', position: { x: 0, y: 0 }, data: { label: g.name, screenCount: sc, color: tab.color, subtitle: `${g.flows.length} flow${g.flows.length !== 1 ? 's' : ''} \u00b7 ${sc} screens` } })
-          ne.push({ id: `e-tab-${tabName}-${gid}`, source: `tab-${tabName}`, target: gid, style: { stroke: tab.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
-        })
-        const all = [...curr, ...nn]
-        setEdges(ce => { const eids = new Set(ce.map(e => e.id)); const ae = [...ce, ...ne.filter(e => !eids.has(e.id))]; relayoutAfterChange(all, ae); return ae })
-        return all
-      })
-    }
-  }, [setNodes, setEdges, allFlows, relayoutAfterChange])
-
-  // ─── ROADMAP VIEW: toggle group ───
-  const toggleGroup = useCallback((tabName: string, groupName: string) => {
-    const tab = roadmapTabs.find(t => t.name === tabName); if (!tab) return
-    const group = tab.groups.find(g => g.name === groupName); if (!group) return
-    const key = `${tabName}-${groupName}`
-
-    if (expandedGroupsRef.current.has(key)) {
-      expandedGroupsRef.current.delete(key)
-      const flowIds = new Set(group.flows.map(fn => `rflow-${fn}`))
-      const screenIds = new Set<string>()
-      group.flows.forEach(fn => { expandedRoadmapFlowsRef.current.delete(fn); const f = allFlows[fn]; if (f) f.screens.forEach(s => screenIds.add(`screen-${s.id}`)) })
-
-      setNodes(curr => {
-        const next = curr.filter(n => !flowIds.has(n.id) && !screenIds.has(n.id))
-        setEdges(ce => { const ne = ce.filter(e => !flowIds.has(e.source) && !flowIds.has(e.target) && !screenIds.has(e.source) && !screenIds.has(e.target)); relayoutAfterChange(next, ne); return ne })
-        return next
-      })
-    } else {
-      expandedGroupsRef.current.add(key)
-      setNodes(curr => {
-        const ids = new Set(curr.map(n => n.id)); const nn: Node[] = []; const ne: Edge[] = []
-        const gid = `group-${tabName}-${groupName}`
-        group.flows.forEach(fn => {
-          const fid = `rflow-${fn}`; if (ids.has(fid)) return
+        section.flows.forEach(fn => {
+          const fid = `mflow-${fn}`; if (ids.has(fid)) return
           const f = allFlows[fn]; if (!f) return
-          nn.push({ id: fid, type: 'flow', position: { x: 0, y: 0 }, data: { label: fn, screenCount: f.screens.length, flowNumber: f.flowNumber, color: tab.color } })
-          ne.push({ id: `e-${gid}-${fid}`, source: gid, target: fid, style: { stroke: tab.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
+          nn.push({ id: fid, type: 'flow', position: { x: 0, y: 0 }, data: { label: fn, screenCount: f.screens.length, flowNumber: f.flowNumber, color: section.color } })
+          ne.push({ id: `e-tab-${tabName}-${fid}`, source: `tab-${tabName}`, target: fid, style: { stroke: section.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
         })
+
+        // Add cross-flow links between visible flow nodes
+        const allVisible = new Set([...ids, ...nn.map(n => n.id)])
+        crossFlowLinks.forEach(link => {
+          const fromId = `mflow-${link.from}`; const toId = `mflow-${link.to}`
+          if (allVisible.has(fromId) && allVisible.has(toId)) {
+            const eid = `e-xlink-${link.from}-${link.to}`
+            ne.push({ id: eid, source: fromId, target: toId, style: { stroke: '#6b7280', strokeWidth: 1, opacity: 0.3 }, animated: true, label: link.label })
+          }
+        })
+
         const all = [...curr, ...nn]
         setEdges(ce => { const eids = new Set(ce.map(e => e.id)); const ae = [...ce, ...ne.filter(e => !eids.has(e.id))]; relayoutAfterChange(all, ae); return ae })
         return all
@@ -297,20 +277,19 @@ function ProductMap() {
     }
   }, [setNodes, setEdges, allFlows, relayoutAfterChange])
 
-  // ─── ROADMAP VIEW: toggle roadmap flow ───
-  const toggleRoadmapFlow = useCallback((flowName: string) => {
+  // ─── PRODUCT MAP: toggle flow (shows screens) ───
+  const toggleMapFlow = useCallback((flowName: string) => {
     const flow = allFlows[flowName]; if (!flow) return
-    const tab = roadmapTabs.find(t => t.groups.some(g => g.flows.includes(flowName)))
-    const color = tab?.color || '#4a5068'
+    const color = getFlowColor(flowName)
 
-    if (expandedRoadmapFlowsRef.current.has(flowName)) {
-      expandedRoadmapFlowsRef.current.delete(flowName)
+    if (expandedMapFlowsRef.current.has(flowName)) {
+      expandedMapFlowsRef.current.delete(flowName)
       const sids = new Set(flow.screens.map(s => `screen-${s.id}`))
       setNodes(curr => { const next = curr.filter(n => !sids.has(n.id)); setEdges(ce => { const ne = ce.filter(e => !sids.has(e.source) && !sids.has(e.target)); relayoutAfterChange(next, ne); return ne }); return next })
     } else {
-      expandedRoadmapFlowsRef.current.add(flowName)
+      expandedMapFlowsRef.current.add(flowName)
       setNodes(curr => {
-        const { nodes: sn, edges: se } = buildScreenNodes(flowName, color, `rflow-${flowName}`, allFlows)
+        const { nodes: sn, edges: se } = buildScreenNodes(flowName, color, `mflow-${flowName}`, allFlows)
         const ids = new Set(curr.map(n => n.id)); const nn = sn.filter(n => !ids.has(n.id)); const all = [...curr, ...nn]
         setEdges(ce => { const eids = new Set(ce.map(e => e.id)); const ae = [...ce, ...se.filter(e => !eids.has(e.id))]; relayoutAfterChange(all, ae); return ae })
         return all
@@ -349,32 +328,36 @@ function ProductMap() {
       Object.keys(allFlows).forEach(f => expandedFlowsRef.current.add(f))
       setNodes(() => layoutNodes(allNodes, allEdges, 'LR')); setEdges(() => allEdges)
     } else {
-      // Roadmap expand all
+      // Product map expand all
       const allNodes: Node[] = []; const allEdges: Edge[] = []
+      const allSections = [...navSections, ...sharedFlows]
       allNodes.push({ id: 'center', type: 'center', position: { x: 0, y: 0 }, data: { label: 'Mercari iOS App' } })
-      roadmapTabs.forEach(tab => {
-        const tabId = `tab-${tab.name}`; let ts = 0
-        tab.groups.forEach(g => g.flows.forEach(fn => { const f = allFlows[fn]; if (f) ts += f.screens.length }))
-        allNodes.push({ id: tabId, type: 'tab', position: { x: 0, y: 0 }, data: { label: tab.name, icon: tab.icon, groupCount: tab.groups.length, screenCount: ts, color: tab.color } })
-        allEdges.push({ id: `e-center-${tabId}`, source: 'center', sourceHandle: 'right', target: tabId, style: { stroke: tab.color, strokeWidth: 2, opacity: EDGE_OPACITY } })
-        expandedTabsRef.current.add(tab.name)
-        tab.groups.forEach(g => {
-          const gid = `group-${tab.name}-${g.name}`; let sc = 0; g.flows.forEach(fn => { const f = allFlows[fn]; if (f) sc += f.screens.length })
-          allNodes.push({ id: gid, type: 'group', position: { x: 0, y: 0 }, data: { label: g.name, screenCount: sc, color: tab.color, subtitle: `${g.flows.length} flow${g.flows.length !== 1 ? 's' : ''} \u00b7 ${sc} screens` } })
-          allEdges.push({ id: `e-${tabId}-${gid}`, source: tabId, target: gid, style: { stroke: tab.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
-          expandedGroupsRef.current.add(`${tab.name}-${g.name}`)
-          g.flows.forEach(fn => {
-            const f = allFlows[fn]; if (!f) return; const fid = `rflow-${fn}`
-            allNodes.push({ id: fid, type: 'flow', position: { x: 0, y: 0 }, data: { label: fn, screenCount: f.screens.length, flowNumber: f.flowNumber, color: tab.color } })
-            allEdges.push({ id: `e-${gid}-${fid}`, source: gid, target: fid, style: { stroke: tab.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
-            expandedRoadmapFlowsRef.current.add(fn)
-            f.screens.forEach((s, i) => {
-              const sid = `screen-${s.id}`; const src = i === 0 ? fid : `screen-${f.screens[i - 1].id}`
-              allNodes.push({ id: sid, type: 'screen', position: { x: 0, y: 0 }, data: { ...s, screenshotPath: getScreenshotPath(s.file) } })
-              allEdges.push({ id: `e-${src}-${sid}`, source: src, target: sid, style: { stroke: tab.color, strokeWidth: 1.5, opacity: EDGE_OPACITY }, animated: true })
-            })
+      allSections.forEach(section => {
+        const tabId = `tab-${section.name}`; let ts = 0
+        section.flows.forEach(fn => { const f = allFlows[fn]; if (f) ts += f.screens.length })
+        allNodes.push({ id: tabId, type: 'tab', position: { x: 0, y: 0 }, data: { label: section.name, icon: section.icon, groupCount: section.flows.length, screenCount: ts, color: section.color } })
+        allEdges.push({ id: `e-center-${tabId}`, source: 'center', sourceHandle: 'right', target: tabId, style: { stroke: section.color, strokeWidth: 2, opacity: EDGE_OPACITY } })
+        expandedTabsRef.current.add(section.name)
+        section.flows.forEach(fn => {
+          const f = allFlows[fn]; if (!f) return; const fid = `mflow-${fn}`
+          allNodes.push({ id: fid, type: 'flow', position: { x: 0, y: 0 }, data: { label: fn, screenCount: f.screens.length, flowNumber: f.flowNumber, color: section.color } })
+          allEdges.push({ id: `e-${tabId}-${fid}`, source: tabId, target: fid, style: { stroke: section.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
+          expandedMapFlowsRef.current.add(fn)
+          f.screens.forEach((s, i) => {
+            const sid = `screen-${s.id}`; const src = i === 0 ? fid : `screen-${f.screens[i - 1].id}`
+            allNodes.push({ id: sid, type: 'screen', position: { x: 0, y: 0 }, data: { ...s, screenshotPath: getScreenshotPath(s.file) } })
+            allEdges.push({ id: `e-${src}-${sid}`, source: src, target: sid, style: { stroke: section.color, strokeWidth: 1.5, opacity: EDGE_OPACITY }, animated: true })
           })
         })
+      })
+      // Cross-flow links
+      const nodeIds = new Set(allNodes.map(n => n.id))
+      crossFlowLinks.forEach(link => {
+        const fid = `mflow-${link.from}`; const tid = `mflow-${link.to}`
+        if (nodeIds.has(fid) && nodeIds.has(tid)) {
+          const eid = `e-xlink-${link.from}-${link.to}`
+          allEdges.push({ id: eid, source: fid, target: tid, style: { stroke: '#6b7280', strokeWidth: 1, opacity: 0.3 }, animated: true })
+        }
       })
       setNodes(() => layoutNodes(allNodes, allEdges, 'LR')); setEdges(() => allEdges)
     }
@@ -383,9 +366,9 @@ function ProductMap() {
   // ─── collapse all ───
   const collapseAll = useCallback(() => {
     expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
-    expandedTabsRef.current.clear(); expandedGroupsRef.current.clear(); expandedRoadmapFlowsRef.current.clear()
+    expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
     setSelectedScreen(null); setSelectedFlow(null)
-    const g = activeView === 'feature' ? buildFeatureGraph() : buildRoadmapGraph()
+    const g = activeView === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
     setNodes(() => g.nodes); setEdges(() => g.edges)
   }, [activeView, setNodes, setEdges])
 
@@ -393,8 +376,8 @@ function ProductMap() {
   const switchView = useCallback((view: 'feature' | 'roadmap') => {
     setActiveView(view); setSelectedScreen(null); setSelectedFlow(null)
     expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
-    expandedTabsRef.current.clear(); expandedGroupsRef.current.clear(); expandedRoadmapFlowsRef.current.clear()
-    const g = view === 'feature' ? buildFeatureGraph() : buildRoadmapGraph()
+    expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
+    const g = view === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
     setNodes(() => g.nodes); setEdges(() => g.edges)
   }, [setNodes, setEdges])
 
@@ -408,23 +391,14 @@ function ProductMap() {
       }
     } else {
       if (node.type === 'tab') { toggleTab(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
-      else if (node.type === 'group') {
-        // extract tab and group name from node id: "group-TabName-GroupName"
-        const parts = node.id.replace('group-', '').split('-')
-        const tabName = parts[0]
-        const groupName = node.data.label as string
-        toggleGroup(tabName, groupName); setTimeout(() => centerOnNode(node), 60)
-      }
       else if (node.type === 'flow') {
-        // rflow- prefixed nodes in roadmap view
-        const flowName = node.data.label as string
-        toggleRoadmapFlow(flowName); setTimeout(() => centerOnNode(node), 60)
+        toggleMapFlow(node.data.label as string); setTimeout(() => centerOnNode(node), 60)
       }
       else if (node.type === 'screen') {
         const fn = (node.data as ScreenData).flow; setSelectedScreen(node.data as ScreenData); setSelectedFlow(allFlows[fn] || null)
       }
     }
-  }, [activeView, toggleCategory, toggleFlow, toggleTab, toggleGroup, toggleRoadmapFlow, centerOnNode, allFlows])
+  }, [activeView, toggleCategory, toggleFlow, toggleTab, toggleMapFlow, centerOnNode, allFlows])
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>

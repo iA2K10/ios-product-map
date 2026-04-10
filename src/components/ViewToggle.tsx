@@ -28,7 +28,7 @@ export function ViewToggle({ activeView, onToggle }: ViewToggleProps) {
             whiteSpace: 'nowrap',
           }}
         >
-          {view === 'feature' ? 'Feature View' : 'Product Roadmap'}
+          {view === 'feature' ? 'Feature View' : 'Product Map'}
         </button>
       ))}
     </div>
