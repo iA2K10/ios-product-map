@@ -30,17 +30,16 @@ export function ScreenNode({ data }: { data: ScreenNodeData }) {
         width: '100%',
         height: 200,
         background: '#0a0c14',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
         overflow: 'hidden',
+        position: 'relative',
       }}>
         <img
           src={data.screenshotPath}
           alt={data.screen_name}
           style={{
-            height: '100%',
-            objectFit: 'contain',
+            width: '100%',
+            display: 'block',
+            marginBottom: -16,
           }}
           loading="lazy"
         />

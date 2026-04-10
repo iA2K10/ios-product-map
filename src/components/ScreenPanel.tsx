@@ -49,6 +49,7 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
+        flexShrink: 0,
       }}>
         <div>
           <div style={{ fontSize: 11, color: '#60a5fa', fontWeight: 600, fontFamily: 'monospace', marginBottom: 4 }}>
@@ -71,118 +72,131 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
             cursor: 'pointer',
             padding: '6px 10px',
             fontSize: 14,
+            flexShrink: 0,
           }}
         >
           ✕
         </button>
       </div>
 
-      {/* Screenshot */}
+      {/* Scrollable content */}
       <div style={{
         flex: 1,
         overflow: 'auto',
-        padding: 20,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: 16,
+        minHeight: 0,
       }}>
         <div style={{
-          width: '100%',
-          maxWidth: 300,
-          background: '#0a0c14',
-          borderRadius: 16,
-          overflow: 'hidden',
-          border: '1px solid #2a2d3a',
+          padding: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 16,
         }}>
-          <img
-            src={screenshotPath}
-            alt={screen.screen_name}
-            style={{ width: '100%', display: 'block' }}
-          />
-        </div>
-
-        {/* Flow position indicator */}
-        <div style={{
-          width: '100%',
-          padding: '12px 16px',
-          background: '#1a1d27',
-          borderRadius: 10,
-          border: '1px solid #2a2d3a',
-        }}>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8, fontWeight: 500 }}>
-            Flow Position
+          {/* Screenshot - clip bottom 30px to hide Mobbin banner */}
+          <div style={{
+            width: '100%',
+            maxWidth: 300,
+            background: '#0a0c14',
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid #2a2d3a',
+          }}>
+            <div style={{
+              width: '100%',
+              marginBottom: -30,
+              overflow: 'hidden',
+            }}>
+              <img
+                src={screenshotPath}
+                alt={screen.screen_name}
+                style={{ width: '100%', display: 'block' }}
+              />
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-            {flow.screens.map((s, i) => (
-              <div
-                key={s.id}
-                onClick={() => onNavigate(s)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: s.id === screen.id ? '#3b82f6' : '#252836',
-                  color: s.id === screen.id ? '#fff' : '#6b7280',
-                  border: s.id === screen.id ? '1px solid #60a5fa' : '1px solid #2a2d3a',
-                  transition: 'all 0.15s',
-                }}>
-                  {i + 1}
+
+          {/* Flow position indicator */}
+          <div style={{
+            width: '100%',
+            padding: '12px 16px',
+            background: '#1a1d27',
+            borderRadius: 10,
+            border: '1px solid #2a2d3a',
+          }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8, fontWeight: 500 }}>
+              Flow Position
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+              {flow.screens.map((s, i) => (
+                <div
+                  key={s.id}
+                  onClick={() => onNavigate(s)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: s.id === screen.id ? '#3b82f6' : '#252836',
+                    color: s.id === screen.id ? '#fff' : '#6b7280',
+                    border: s.id === screen.id ? '1px solid #60a5fa' : '1px solid #2a2d3a',
+                    transition: 'all 0.15s',
+                  }}>
+                    {i + 1}
+                  </div>
+                  {i < flow.screens.length - 1 && (
+                    <div style={{ color: '#3a3f50', fontSize: 10 }}>\u2192</div>
+                  )}
                 </div>
-                {i < flow.screens.length - 1 && (
-                  <div style={{ color: '#3a3f50', fontSize: 10 }}>→</div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* Metadata */}
-        <div style={{
-          width: '100%',
-          padding: '12px 16px',
-          background: '#1a1d27',
-          borderRadius: 10,
-          border: '1px solid #2a2d3a',
-        }}>
-          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8, fontWeight: 500 }}>
-            Details
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            {[
-              ['Screen ID', screen.id],
-              ['Flow', flow.name],
-              ['Flow #', String(flow.flowNumber)],
-              ['Screen #', String(screen.screen_number)],
-              ['Position', `${currentIndex + 1} of ${flow.screens.length}`],
-            ].map(([label, value]) => (
-              <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: '#6b7280' }}>{label}</span>
-                <span style={{ color: '#c8cdd8', fontFamily: 'monospace', fontSize: 11 }}>{value}</span>
-              </div>
-            ))}
+          {/* Metadata */}
+          <div style={{
+            width: '100%',
+            padding: '12px 16px',
+            background: '#1a1d27',
+            borderRadius: 10,
+            border: '1px solid #2a2d3a',
+          }}>
+            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 8, fontWeight: 500 }}>
+              Details
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[
+                ['Screen ID', screen.id],
+                ['Flow', flow.name],
+                ['Flow #', String(flow.flowNumber)],
+                ['Screen #', String(screen.screen_number)],
+                ['Position', `${currentIndex + 1} of ${flow.screens.length}`],
+              ].map(([label, value]) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
+                  <span style={{ color: '#6b7280' }}>{label}</span>
+                  <span style={{ color: '#c8cdd8', fontFamily: 'monospace', fontSize: 11 }}>{value}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
+      {/* Navigation - fixed at bottom */}
       <div style={{
         padding: '12px 20px',
         borderTop: '1px solid #2a2d3a',
         display: 'flex',
         gap: 8,
+        flexShrink: 0,
       }}>
         <button
           disabled={!prevScreen}
@@ -199,7 +213,7 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
             fontWeight: 500,
           }}
         >
-          ← Previous
+          \u2190 Previous
         </button>
         <button
           disabled={!nextScreen}
@@ -216,7 +230,7 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
             fontWeight: 500,
           }}
         >
-          Next →
+          Next \u2192
         </button>
       </div>
     </div>
