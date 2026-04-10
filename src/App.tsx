@@ -282,7 +282,7 @@ function ProductMap() {
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
-        fitView
+        defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
         minZoom={0.02}
         maxZoom={2}
         defaultEdgeOptions={{ type: 'default' }}
