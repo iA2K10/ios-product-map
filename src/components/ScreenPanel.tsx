@@ -154,7 +154,7 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
                     {i + 1}
                   </div>
                   {i < flow.screens.length - 1 && (
-                    <div style={{ color: '#3a3f50', fontSize: 10 }}>\u2192</div>
+                    <div style={{ color: '#3a3f50', fontSize: 10 }}>→</div>
                   )}
                 </div>
               ))}
@@ -213,7 +213,7 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
             fontWeight: 500,
           }}
         >
-          \u2190 Previous
+          ← Previous
         </button>
         <button
           disabled={!nextScreen}
@@ -230,7 +230,7 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
             fontWeight: 500,
           }}
         >
-          Next \u2192
+          Next →
         </button>
       </div>
     </div>
