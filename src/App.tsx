@@ -6,7 +6,6 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
-  useReactFlow,
   ReactFlowProvider,
   Node,
   Edge,
@@ -109,7 +108,6 @@ function buildInitialGraph(): { nodes: Node[]; edges: Edge[] } {
 }
 
 function ProductMap() {
-  const { fitView } = useReactFlow()
   const initial = buildInitialGraph()
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
@@ -117,13 +115,6 @@ function ProductMap() {
   const expandedFlowsRef = useRef<Set<string>>(new Set())
   const [selectedScreen, setSelectedScreen] = useState<ScreenData | null>(null)
   const [selectedFlow, setSelectedFlow] = useState<FlowData | null>(null)
-
-  const relayout = useCallback((newNodes: Node[], newEdges: Edge[]) => {
-    const laid = layoutNodes(newNodes, newEdges, 'LR')
-    setNodes(laid)
-    setEdges(newEdges)
-    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
-  }, [setNodes, setEdges, fitView])
 
   const toggleCategory = useCallback((catName: string) => {
     const categories = data.categories as Record<string, FlowData[]>
@@ -147,7 +138,7 @@ function ProductMap() {
             !screenIds.has(e.source) && !screenIds.has(e.target)
           )
           const laid = layoutNodes(nextNodes, nextEdges, 'LR')
-          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          setTimeout(() => { setNodes(laid) }, 10)
           return nextEdges
         })
         return nextNodes
@@ -188,13 +179,13 @@ function ProductMap() {
           const dedupedEdges = newEdges.filter(e => !existingEdgeIds.has(e.id))
           const allEdges = [...currEdges, ...dedupedEdges]
           const laid = layoutNodes(allNodes, allEdges, 'LR')
-          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          setTimeout(() => { setNodes(laid) }, 10)
           return allEdges
         })
         return allNodes
       })
     }
-  }, [setNodes, setEdges, fitView])
+  }, [setNodes, setEdges])
 
   const toggleFlow = useCallback((flowName: string) => {
     const flow = (data.flows as Record<string, FlowData>)[flowName]
@@ -209,7 +200,7 @@ function ProductMap() {
         setEdges(currEdges => {
           const nextEdges = currEdges.filter(e => !screenIds.has(e.source) && !screenIds.has(e.target))
           const laid = layoutNodes(nextNodes, nextEdges, 'LR')
-          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          setTimeout(() => { setNodes(laid) }, 10)
           return nextEdges
         })
         return nextNodes
@@ -261,13 +252,13 @@ function ProductMap() {
           const dedupedEdges = newEdges.filter(e => !existingEdgeIds.has(e.id))
           const allEdges = [...currEdges, ...dedupedEdges]
           const laid = layoutNodes(allNodes, allEdges, 'LR')
-          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          setTimeout(() => { setNodes(laid) }, 10)
           return allEdges
         })
         return allNodes
       })
     }
-  }, [setNodes, setEdges, fitView])
+  }, [setNodes, setEdges])
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === 'category') {
