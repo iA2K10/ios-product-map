@@ -440,19 +440,20 @@ function ProductMap() {
         />
       </ReactFlow>
 
-      {/* Header */}
+      {/* Title */}
       <div style={{
         position: 'absolute', top: 16, left: 16,
         padding: '12px 20px',
         background: 'rgba(26, 29, 39, 0.9)', borderRadius: 12, border: '1px solid #2a2d3a', backdropFilter: 'blur(10px)',
-        display: 'flex', alignItems: 'center', gap: 16,
       }}>
-        <div>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#e1e4ea' }}>Mercari iOS Product Map</div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
-            {Object.keys(data.flows).length} flows &middot; 245 screens
-          </div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#e1e4ea' }}>Mercari iOS Product Map</div>
+        <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
+          {Object.keys(data.flows).length} flows &middot; 245 screens
         </div>
+      </div>
+
+      {/* View Toggle */}
+      <div style={{ position: 'absolute', top: 16, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
         <ViewToggle activeView={activeView} onToggle={switchView} />
       </div>
 
