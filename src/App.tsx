@@ -156,7 +156,7 @@ function buildScreenNodes(flowName: string, color: string, sourceNodeId: string,
 // ─── MAIN COMPONENT ───
 
 function ProductMap() {
-  const { setCenter, getZoom } = useReactFlow()
+  const { setCenter, getZoom, fitView } = useReactFlow()
   const [activeView, setActiveView] = useState<'feature' | 'roadmap'>('feature')
   const initial = buildFeatureGraph()
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
@@ -377,17 +377,20 @@ function ProductMap() {
     expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
     expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
     setSelectedScreen(null); setSelectedFlow(null)
+    clearHighlight()
     const g = activeView === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
     setNodes(() => g.nodes); setEdges(() => g.edges)
-  }, [activeView, setNodes, setEdges])
+    setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 50)
+  }, [activeView, setNodes, setEdges, fitView, clearHighlight])
 
   // ─── switch view ───
   const switchView = useCallback((view: 'feature' | 'roadmap') => {
-    setActiveView(view); setSelectedScreen(null); setSelectedFlow(null)
+    setActiveView(view); setSelectedScreen(null); setSelectedFlow(null); clearHighlight()
     expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
     expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
     const g = view === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
     setNodes(() => g.nodes); setEdges(() => g.edges)
+    setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 50)
   }, [setNodes, setEdges])
 
   // ─── highlight path to selected screen ───
