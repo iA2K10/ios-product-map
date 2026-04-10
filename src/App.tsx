@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useMemo } from 'react'
 import {
   ReactFlow,
   Background,
@@ -22,6 +22,7 @@ import { FlowNode } from './nodes/FlowNode'
 import { ScreenNode } from './nodes/ScreenNode'
 import { TabNode } from './nodes/TabNode'
 import { ScreenPanel } from './components/ScreenPanel'
+import { SearchBar } from './components/SearchBar'
 import { ViewToggle } from './components/ViewToggle'
 import { layoutNodes } from './layout'
 
@@ -455,6 +456,89 @@ function ProductMap() {
     }
   }, [activeView, toggleCategory, toggleFlow, toggleTab, toggleMapFlow, centerOnNode, allFlows, highlightPathTo, clearHighlight])
 
+  // ─── search: flat screen list ───
+  const allScreensList = useMemo(() => {
+    const list: ScreenData[] = []
+    Object.values(allFlows).forEach(flow => {
+      flow.screens.forEach(s => list.push(s))
+    })
+    return list
+  }, [allFlows])
+
+  // ─── search: navigate to screen ───
+  const handleSearchSelect = useCallback((screen: ScreenData) => {
+    const flow = allFlows[screen.flow]
+    if (!flow) return
+
+    if (activeView === 'feature') {
+      // Find which category this flow belongs to
+      const categories = data.categories as Record<string, FlowData[]>
+      const catEntry = Object.entries(categories).find(([, flows]) =>
+        flows.some(f => f.name === screen.flow)
+      )
+      if (!catEntry) return
+      const catName = catEntry[0]
+
+      // Expand category if needed
+      if (!expandedCatsRef.current.has(catName)) {
+        toggleCategory(catName)
+      }
+      // Expand flow if needed (after a tick for category to render)
+      setTimeout(() => {
+        if (!expandedFlowsRef.current.has(screen.flow)) {
+          toggleFlow(screen.flow)
+        }
+        // Select screen after flow expands
+        setTimeout(() => {
+          setSelectedScreen(screen)
+          setSelectedFlow(flow)
+          clearHighlight()
+          setTimeout(() => highlightPathTo(`screen-${screen.id}`), 20)
+          // Center on the screen node
+          setNodes(curr => {
+            const screenNode = curr.find(n => n.id === `screen-${screen.id}`)
+            if (screenNode) {
+              const zoom = getZoom()
+              setCenter(screenNode.position.x + 80, screenNode.position.y + 140, { zoom, duration: 400 })
+            }
+            return curr
+          })
+        }, 100)
+      }, 100)
+
+    } else {
+      // Product Map view — find which section has this flow
+      const allSections = [...navSections, ...sharedFlows]
+      const section = allSections.find(s => s.flows.includes(screen.flow))
+      if (!section) return
+
+      // Expand tab if needed
+      if (!expandedTabsRef.current.has(section.name)) {
+        toggleTab(section.name)
+      }
+      // Expand flow if needed
+      setTimeout(() => {
+        if (!expandedMapFlowsRef.current.has(screen.flow)) {
+          toggleMapFlow(screen.flow)
+        }
+        setTimeout(() => {
+          setSelectedScreen(screen)
+          setSelectedFlow(flow)
+          clearHighlight()
+          setTimeout(() => highlightPathTo(`screen-${screen.id}`), 20)
+          setNodes(curr => {
+            const screenNode = curr.find(n => n.id === `screen-${screen.id}`)
+            if (screenNode) {
+              const zoom = getZoom()
+              setCenter(screenNode.position.x + 80, screenNode.position.y + 140, { zoom, duration: 400 })
+            }
+            return curr
+          })
+        }, 100)
+      }, 100)
+    }
+  }, [activeView, allFlows, toggleCategory, toggleFlow, toggleTab, toggleMapFlow, clearHighlight, highlightPathTo, setNodes, setCenter, getZoom])
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlow
@@ -519,6 +603,8 @@ function ProductMap() {
           onNavigate={(screen) => setSelectedScreen(screen)}
         />
       )}
+
+      <SearchBar screens={allScreensList} onSelect={handleSearchSelect} />
     </div>
   )
 }
