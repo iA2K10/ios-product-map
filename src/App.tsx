@@ -8,7 +8,6 @@ import {
   useEdgesState,
   useReactFlow,
   ReactFlowProvider,
-  Panel,
   Node,
   Edge,
   BackgroundVariant,
@@ -359,48 +358,28 @@ function ProductMap() {
         defaultEdgeOptions={{ type: 'default' }}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e2030" />
-        <Controls />
-        <Panel position="bottom-left" style={{ marginLeft: 50, marginBottom: 0 }}>
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            border: '1px solid #2a2d3a',
-            borderRadius: 8,
-            overflow: 'hidden',
-            background: '#1a1d27',
-          }}>
-            <button
-              onClick={expandAll}
-              title="Expand All"
-              style={{
-                width: 28, height: 28,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#1a1d27', border: 'none', borderBottom: '1px solid #2a2d3a',
-                color: '#e1e4ea', cursor: 'pointer', padding: 0,
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
-                <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-              </svg>
-            </button>
-            <button
-              onClick={collapseAll}
-              title="Collapse All"
-              style={{
-                width: 28, height: 28,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: '#1a1d27', border: 'none',
-                color: '#e1e4ea', cursor: 'pointer', padding: 0,
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
-                <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
-              </svg>
-            </button>
-          </div>
-        </Panel>
+        <Controls>
+          <button
+            className="react-flow__controls-button"
+            onClick={expandAll}
+            title="Expand All"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
+          <button
+            className="react-flow__controls-button"
+            onClick={collapseAll}
+            title="Collapse All"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" />
+              <line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
+        </Controls>
         <MiniMap
           nodeColor={(node) => {
             if (node.type === 'center') return '#60a5fa'
