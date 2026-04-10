@@ -6,6 +6,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   ReactFlowProvider,
   Node,
   Edge,
@@ -108,6 +109,7 @@ function buildInitialGraph(): { nodes: Node[]; edges: Edge[] } {
 }
 
 function ProductMap() {
+  const { setCenter, getZoom } = useReactFlow()
   const initial = buildInitialGraph()
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
@@ -260,18 +262,27 @@ function ProductMap() {
     }
   }, [setNodes, setEdges])
 
+  const centerOnNode = useCallback((node: Node) => {
+    const zoom = getZoom()
+    const x = node.position.x + 120
+    const y = node.position.y + 30
+    setCenter(x, y, { zoom, duration: 300 })
+  }, [getZoom, setCenter])
+
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === 'category') {
       toggleCategory(node.data.label as string)
+      setTimeout(() => centerOnNode(node), 60)
     } else if (node.type === 'flow') {
       toggleFlow(node.data.label as string)
+      setTimeout(() => centerOnNode(node), 60)
     } else if (node.type === 'screen') {
       const flowName = (node.data as ScreenData).flow
       const flowData = (data.flows as Record<string, FlowData>)[flowName]
       setSelectedScreen(node.data as ScreenData)
       setSelectedFlow(flowData || null)
     }
-  }, [toggleCategory, toggleFlow])
+  }, [toggleCategory, toggleFlow, centerOnNode])
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
