@@ -372,41 +372,17 @@ function ProductMap() {
     }
   }, [activeView, setNodes, setEdges, allFlows])
 
-  // ─── collapse all ───
-  const collapseAll = useCallback(() => {
-    expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
-    expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
-    setSelectedScreen(null); setSelectedFlow(null)
-    clearHighlight()
-    const g = activeView === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
-    setNodes(() => g.nodes); setEdges(() => g.edges)
-    setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 50)
-  }, [activeView, setNodes, setEdges, fitView, clearHighlight])
-
-  // ─── switch view ───
-  const switchView = useCallback((view: 'feature' | 'roadmap') => {
-    setActiveView(view); setSelectedScreen(null); setSelectedFlow(null); clearHighlight()
-    expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
-    expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
-    const g = view === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
-    setNodes(() => g.nodes); setEdges(() => g.edges)
-    setTimeout(() => fitView({ padding: 0.3, duration: 400 }), 50)
-  }, [setNodes, setEdges])
-
   // ─── highlight path to selected screen ───
   const highlightedEdgesRef = useRef<Set<string>>(new Set())
 
   const highlightPathTo = useCallback((screenNodeId: string) => {
     setEdges(currEdges => {
-      // Build reverse map: target → edge
       const targetToEdge = new Map<string, Edge[]>()
       currEdges.forEach(e => {
         const list = targetToEdge.get(e.target) || []
         list.push(e)
         targetToEdge.set(e.target, list)
       })
-
-      // Walk backwards from screen to center
       const pathEdgeIds = new Set<string>()
       const queue = [screenNodeId]
       const visited = new Set<string>()
@@ -415,12 +391,8 @@ function ProductMap() {
         if (visited.has(nodeId)) continue
         visited.add(nodeId)
         const incomingEdges = targetToEdge.get(nodeId) || []
-        incomingEdges.forEach(e => {
-          pathEdgeIds.add(e.id)
-          queue.push(e.source)
-        })
+        incomingEdges.forEach(e => { pathEdgeIds.add(e.id); queue.push(e.source) })
       }
-
       highlightedEdgesRef.current = pathEdgeIds
       return currEdges.map(e => pathEdgeIds.has(e.id)
         ? { ...e, style: { ...e.style, opacity: 0.8, strokeWidth: 2.5 } }
@@ -438,6 +410,27 @@ function ProductMap() {
     ))
     highlightedEdgesRef.current = new Set()
   }, [setEdges])
+
+  // ─── collapse all ───
+  const collapseAll = useCallback(() => {
+    expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
+    expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
+    setSelectedScreen(null); setSelectedFlow(null)
+    clearHighlight()
+    const g = activeView === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
+    setNodes(() => g.nodes); setEdges(() => g.edges)
+    setTimeout(() => { try { fitView({ padding: 0.3, duration: 400 }) } catch(_) {} }, 50)
+  }, [activeView, setNodes, setEdges, clearHighlight])
+
+  // ─── switch view ───
+  const switchView = useCallback((view: 'feature' | 'roadmap') => {
+    setActiveView(view); setSelectedScreen(null); setSelectedFlow(null); clearHighlight()
+    expandedCatsRef.current.clear(); expandedFlowsRef.current.clear()
+    expandedTabsRef.current.clear(); expandedMapFlowsRef.current.clear()
+    const g = view === 'feature' ? buildFeatureGraph() : buildProductMapGraph()
+    setNodes(() => g.nodes); setEdges(() => g.edges)
+    setTimeout(() => { try { fitView({ padding: 0.3, duration: 400 }) } catch(_) {} }, 50)
+  }, [setNodes, setEdges])
 
   // ─── click handler ───
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
