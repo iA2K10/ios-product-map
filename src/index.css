@@ -49,6 +49,20 @@ html, body, #root {
   stroke-width: 2;
 }
 
+.react-flow__edge-text {
+  fill: #c8cdd8 !important;
+  font-size: 10px !important;
+}
+
+.react-flow__edge-textbg {
+  fill: #1a1d27 !important;
+  fill-opacity: 0.9 !important;
+  stroke: #2a2d3a !important;
+  stroke-width: 1 !important;
+  rx: 4 !important;
+  ry: 4 !important;
+}
+
 .react-flow__attribution {
   display: none !important;
 }
