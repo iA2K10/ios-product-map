@@ -101,7 +101,7 @@ function buildInitialGraph(): { nodes: Node[]; edges: Edge[] } {
       source: 'center',
       sourceHandle: 'right',
       target: catId,
-      style: { stroke: CATEGORY_COLORS[catName] || '#94a3b8', strokeWidth: 2, opacity: 0.6 },
+      style: { stroke: CATEGORY_COLORS[catName] || '#94a3b8', strokeWidth: 2, opacity: 0.35 },
     })
   })
 
@@ -172,7 +172,7 @@ function ProductMap() {
             id: `e-cat-${catName}-${flowId}`,
             source: `cat-${catName}`,
             target: flowId,
-            style: { stroke: color, strokeWidth: 1.5, opacity: 0.6 },
+            style: { stroke: color, strokeWidth: 1.5, opacity: 0.35 },
           })
         })
 
@@ -236,7 +236,7 @@ function ProductMap() {
             id: i === 0 ? `e-flow-${flowName}-${screenId}` : `e-${source}-${screenId}`,
             source,
             target: screenId,
-            style: { stroke: color, strokeWidth: 1.5, opacity: 0.6 },
+            style: { stroke: color, strokeWidth: 1.5, opacity: 0.35 },
             animated: true,
           })
         })
@@ -280,7 +280,7 @@ function ProductMap() {
         id: catId, type: 'category', position: { x: 0, y: 0 },
         data: { label: catName, flowCount: flows.length, screenCount: flows.reduce((s: number, f: FlowData) => s + f.screens.length, 0), color },
       })
-      allEdges.push({ id: `e-center-${catId}`, source: 'center', sourceHandle: 'right', target: catId, style: { stroke: color, strokeWidth: 2, opacity: 0.6 } })
+      allEdges.push({ id: `e-center-${catId}`, source: 'center', sourceHandle: 'right', target: catId, style: { stroke: color, strokeWidth: 2, opacity: 0.35 } })
 
       flows.forEach((flow) => {
         const flowId = `flow-${flow.name}`
@@ -288,7 +288,7 @@ function ProductMap() {
           id: flowId, type: 'flow', position: { x: 0, y: 0 },
           data: { label: flow.name, screenCount: flow.screens.length, flowNumber: flow.flowNumber, color },
         })
-        allEdges.push({ id: `e-${catId}-${flowId}`, source: catId, target: flowId, style: { stroke: color, strokeWidth: 1.5, opacity: 0.6 } })
+        allEdges.push({ id: `e-${catId}-${flowId}`, source: catId, target: flowId, style: { stroke: color, strokeWidth: 1.5, opacity: 0.35 } })
 
         const fullFlow = allFlowsData[flow.name]
         if (!fullFlow) return
@@ -299,7 +299,7 @@ function ProductMap() {
             data: { ...screen, screenshotPath: getScreenshotPath(screen.file) },
           })
           const source = i === 0 ? flowId : `screen-${fullFlow.screens[i - 1].id}`
-          allEdges.push({ id: `e-${source}-${screenId}`, source, target: screenId, style: { stroke: color, strokeWidth: 1.5, opacity: 0.6 }, animated: true })
+          allEdges.push({ id: `e-${source}-${screenId}`, source, target: screenId, style: { stroke: color, strokeWidth: 1.5, opacity: 0.35 }, animated: true })
         })
       })
     })
