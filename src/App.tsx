@@ -456,82 +456,59 @@ function ProductMap() {
     }
   }, [activeView, toggleCategory, toggleFlow, toggleTab, toggleMapFlow, centerOnNode, allFlows, highlightPathTo, clearHighlight])
 
-  // ─── search: flat screen list ───
-  const allScreensList = useMemo(() => {
-    const list: ScreenData[] = []
-    Object.values(allFlows).forEach(flow => {
-      flow.screens.forEach(s => list.push(s))
+  // ─── search: flow list ───
+  const flowSearchList = useMemo(() => {
+    const categories = data.categories as Record<string, FlowData[]>
+    const list: { name: string; flowNumber: number; screenCount: number; category: string }[] = []
+    Object.entries(categories).forEach(([catName, flows]) => {
+      flows.forEach(f => list.push({ name: f.name, flowNumber: f.flowNumber, screenCount: f.screens.length, category: catName }))
     })
     return list
-  }, [allFlows])
+  }, [])
 
-  // ─── search: navigate to screen ───
-  const handleSearchSelect = useCallback((screen: ScreenData) => {
-    const flow = allFlows[screen.flow]
-    if (!flow) return
+  // ─── search: navigate to flow and open first screen ───
+  const handleSearchSelect = useCallback((flowName: string) => {
+    const flow = allFlows[flowName]
+    if (!flow || flow.screens.length === 0) return
+    const firstScreen = flow.screens[0]
 
     if (activeView === 'feature') {
-      // Find which category this flow belongs to
       const categories = data.categories as Record<string, FlowData[]>
-      const catEntry = Object.entries(categories).find(([, flows]) =>
-        flows.some(f => f.name === screen.flow)
-      )
+      const catEntry = Object.entries(categories).find(([, flows]) => flows.some(f => f.name === flowName))
       if (!catEntry) return
       const catName = catEntry[0]
 
-      // Expand category if needed
-      if (!expandedCatsRef.current.has(catName)) {
-        toggleCategory(catName)
-      }
-      // Expand flow if needed (after a tick for category to render)
+      if (!expandedCatsRef.current.has(catName)) toggleCategory(catName)
       setTimeout(() => {
-        if (!expandedFlowsRef.current.has(screen.flow)) {
-          toggleFlow(screen.flow)
-        }
-        // Select screen after flow expands
+        if (!expandedFlowsRef.current.has(flowName)) toggleFlow(flowName)
         setTimeout(() => {
-          setSelectedScreen(screen)
+          setSelectedScreen(firstScreen)
           setSelectedFlow(flow)
           clearHighlight()
-          setTimeout(() => highlightPathTo(`screen-${screen.id}`), 20)
-          // Center on the screen node
+          setTimeout(() => highlightPathTo(`screen-${firstScreen.id}`), 20)
           setNodes(curr => {
-            const screenNode = curr.find(n => n.id === `screen-${screen.id}`)
-            if (screenNode) {
-              const zoom = getZoom()
-              setCenter(screenNode.position.x + 80, screenNode.position.y + 140, { zoom, duration: 400 })
-            }
+            const node = curr.find(n => n.id === `screen-${firstScreen.id}`)
+            if (node) setCenter(node.position.x + 80, node.position.y + 140, { zoom: getZoom(), duration: 400 })
             return curr
           })
         }, 100)
       }, 100)
-
     } else {
-      // Product Map view — find which section has this flow
       const allSections = [...navSections, ...sharedFlows]
-      const section = allSections.find(s => s.flows.includes(screen.flow))
+      const section = allSections.find(s => s.flows.includes(flowName))
       if (!section) return
 
-      // Expand tab if needed
-      if (!expandedTabsRef.current.has(section.name)) {
-        toggleTab(section.name)
-      }
-      // Expand flow if needed
+      if (!expandedTabsRef.current.has(section.name)) toggleTab(section.name)
       setTimeout(() => {
-        if (!expandedMapFlowsRef.current.has(screen.flow)) {
-          toggleMapFlow(screen.flow)
-        }
+        if (!expandedMapFlowsRef.current.has(flowName)) toggleMapFlow(flowName)
         setTimeout(() => {
-          setSelectedScreen(screen)
+          setSelectedScreen(firstScreen)
           setSelectedFlow(flow)
           clearHighlight()
-          setTimeout(() => highlightPathTo(`screen-${screen.id}`), 20)
+          setTimeout(() => highlightPathTo(`screen-${firstScreen.id}`), 20)
           setNodes(curr => {
-            const screenNode = curr.find(n => n.id === `screen-${screen.id}`)
-            if (screenNode) {
-              const zoom = getZoom()
-              setCenter(screenNode.position.x + 80, screenNode.position.y + 140, { zoom, duration: 400 })
-            }
+            const node = curr.find(n => n.id === `screen-${firstScreen.id}`)
+            if (node) setCenter(node.position.x + 80, node.position.y + 140, { zoom: getZoom(), duration: 400 })
             return curr
           })
         }, 100)
@@ -604,7 +581,7 @@ function ProductMap() {
         />
       )}
 
-      <SearchBar screens={allScreensList} onSelect={handleSearchSelect} />
+      <SearchBar flows={flowSearchList} onSelect={handleSearchSelect} />
     </div>
   )
 }

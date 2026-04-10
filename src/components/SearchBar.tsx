@@ -1,21 +1,18 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-interface ScreenResult {
-  id: string
-  screen_name: string
-  flow: string
-  flow_number: number
-  screen_number: number
-  file: string
-  filename: string
+interface FlowResult {
+  name: string
+  flowNumber: number
+  screenCount: number
+  category: string
 }
 
 interface Props {
-  screens: ScreenResult[]
-  onSelect: (screen: ScreenResult) => void
+  flows: FlowResult[]
+  onSelect: (flowName: string) => void
 }
 
-export function SearchBar({ screens, onSelect }: Props) {
+export function SearchBar({ flows, onSelect }: Props) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -23,18 +20,14 @@ export function SearchBar({ screens, onSelect }: Props) {
   const listRef = useRef<HTMLDivElement>(null)
 
   const results = query.length > 0
-    ? screens.filter(s =>
-        s.screen_name.toLowerCase().includes(query.toLowerCase()) ||
-        s.id.toLowerCase().includes(query.toLowerCase()) ||
-        s.flow.toLowerCase().includes(query.toLowerCase())
+    ? flows.filter(f =>
+        f.name.toLowerCase().includes(query.toLowerCase()) ||
+        f.category.toLowerCase().includes(query.toLowerCase())
       ).slice(0, 8)
     : []
 
-  useEffect(() => {
-    setSelectedIndex(0)
-  }, [query])
+  useEffect(() => { setSelectedIndex(0) }, [query])
 
-  // Scroll selected item into view
   useEffect(() => {
     if (listRef.current && selectedIndex >= 0) {
       const item = listRef.current.children[selectedIndex] as HTMLElement
@@ -42,8 +35,8 @@ export function SearchBar({ screens, onSelect }: Props) {
     }
   }, [selectedIndex])
 
-  const handleSelect = useCallback((screen: ScreenResult) => {
-    onSelect(screen)
+  const handleSelect = useCallback((flow: FlowResult) => {
+    onSelect(flow.name)
     setQuery('')
     setIsOpen(false)
     inputRef.current?.blur()
@@ -66,19 +59,15 @@ export function SearchBar({ screens, onSelect }: Props) {
     }
   }, [results, selectedIndex, handleSelect])
 
-  // Close on click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      if (!target.closest('[data-search-bar]')) {
-        setIsOpen(false)
-      }
+      if (!target.closest('[data-search-bar]')) setIsOpen(false)
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  // Cmd+K shortcut
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -100,7 +89,6 @@ export function SearchBar({ screens, onSelect }: Props) {
       zIndex: 100,
       width: 420,
     }}>
-      {/* Results dropdown (above input) */}
       {isOpen && results.length > 0 && (
         <div
           ref={listRef}
@@ -114,10 +102,10 @@ export function SearchBar({ screens, onSelect }: Props) {
             overflow: 'auto',
           }}
         >
-          {results.map((screen, i) => (
+          {results.map((flow, i) => (
             <div
-              key={screen.id}
-              onClick={() => handleSelect(screen)}
+              key={flow.name}
+              onClick={() => handleSelect(flow)}
               style={{
                 padding: '10px 16px',
                 cursor: 'pointer',
@@ -128,22 +116,24 @@ export function SearchBar({ screens, onSelect }: Props) {
               onMouseEnter={() => setSelectedIndex(i)}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                <span style={{ fontSize: 10, color: '#60a5fa', fontFamily: 'monospace', fontWeight: 600 }}>
-                  {screen.id}
+                <span style={{
+                  fontSize: 10, color: '#60a5fa', fontFamily: 'monospace', fontWeight: 600,
+                  background: '#60a5fa15', padding: '1px 5px', borderRadius: 3,
+                }}>
+                  #{flow.flowNumber}
                 </span>
                 <span style={{ fontSize: 12, color: '#e1e4ea', fontWeight: 500 }}>
-                  {screen.screen_name}
+                  {flow.name}
                 </span>
               </div>
-              <div style={{ fontSize: 10, color: '#555b6e', paddingLeft: 0 }}>
-                Flow: {screen.flow}
+              <div style={{ fontSize: 10, color: '#555b6e' }}>
+                {flow.screenCount} screens · {flow.category}
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* Search input */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -166,7 +156,7 @@ export function SearchBar({ screens, onSelect }: Props) {
           onChange={(e) => { setQuery(e.target.value); setIsOpen(true) }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
-          placeholder="Search screens, flows..."
+          placeholder="Search flows..."
           style={{
             flex: 1,
             background: 'transparent',
@@ -179,16 +169,11 @@ export function SearchBar({ screens, onSelect }: Props) {
           }}
         />
         <div style={{
-          fontSize: 10,
-          color: '#555b6e',
-          background: '#1a1d27',
-          border: '1px solid #2a2d3a',
-          borderRadius: 4,
-          padding: '2px 6px',
-          fontFamily: 'monospace',
-          flexShrink: 0,
+          fontSize: 10, color: '#555b6e',
+          background: '#1a1d27', border: '1px solid #2a2d3a',
+          borderRadius: 4, padding: '2px 6px', fontFamily: 'monospace', flexShrink: 0,
         }}>
-          {'\u2318'}K
+          ⌘K
         </div>
       </div>
     </div>
