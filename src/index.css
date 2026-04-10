@@ -46,8 +46,7 @@ html, body, #root {
 }
 
 .react-flow__edge-path {
-  stroke: #3a3f50 !important;
-  stroke-width: 2 !important;
+  stroke-width: 2;
 }
 
 .react-flow__attribution {
