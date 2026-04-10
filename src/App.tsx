@@ -99,6 +99,7 @@ function buildInitialGraph(): { nodes: Node[]; edges: Edge[] } {
     edges.push({
       id: `e-center-${catId}`,
       source: 'center',
+      sourceHandle: 'right',
       target: catId,
       style: { stroke: CATEGORY_COLORS[catName] || '#94a3b8', strokeWidth: 2, opacity: 0.4 },
     })
@@ -212,6 +213,8 @@ function ProductMap() {
 
       setNodes(curr => {
         const existingIds = new Set(curr.map(n => n.id))
+        const flowNode = curr.find(n => n.id === `flow-${flowName}`)
+        const color = (flowNode?.data?.color as string) || '#4a5068'
         const newNodes: Node[] = []
         const newEdges: Edge[] = []
 
@@ -228,24 +231,14 @@ function ProductMap() {
             },
           })
 
-          if (i === 0) {
-            newEdges.push({
-              id: `e-flow-${flowName}-${screenId}`,
-              source: `flow-${flowName}`,
-              target: screenId,
-              style: { stroke: '#4a5068', strokeWidth: 1.5 },
-              animated: true,
-            })
-          } else {
-            const prevId = `screen-${flow.screens[i - 1].id}`
-            newEdges.push({
-              id: `e-${prevId}-${screenId}`,
-              source: prevId,
-              target: screenId,
-              style: { stroke: '#4a5068', strokeWidth: 1.5 },
-              animated: true,
-            })
-          }
+          const source = i === 0 ? `flow-${flowName}` : `screen-${flow.screens[i - 1].id}`
+          newEdges.push({
+            id: i === 0 ? `e-flow-${flowName}-${screenId}` : `e-${source}-${screenId}`,
+            source,
+            target: screenId,
+            style: { stroke: color, strokeWidth: 1.5, opacity: 0.5 },
+            animated: true,
+          })
         })
 
         const allNodes = [...curr, ...newNodes]
@@ -287,7 +280,7 @@ function ProductMap() {
         id: catId, type: 'category', position: { x: 0, y: 0 },
         data: { label: catName, flowCount: flows.length, screenCount: flows.reduce((s: number, f: FlowData) => s + f.screens.length, 0), color },
       })
-      allEdges.push({ id: `e-center-${catId}`, source: 'center', target: catId, style: { stroke: color, strokeWidth: 2, opacity: 0.4 } })
+      allEdges.push({ id: `e-center-${catId}`, source: 'center', sourceHandle: 'right', target: catId, style: { stroke: color, strokeWidth: 2, opacity: 0.4 } })
 
       flows.forEach((flow) => {
         const flowId = `flow-${flow.name}`
@@ -306,7 +299,7 @@ function ProductMap() {
             data: { ...screen, screenshotPath: getScreenshotPath(screen.file) },
           })
           const source = i === 0 ? flowId : `screen-${fullFlow.screens[i - 1].id}`
-          allEdges.push({ id: `e-${source}-${screenId}`, source, target: screenId, style: { stroke: '#4a5068', strokeWidth: 1.5 }, animated: true })
+          allEdges.push({ id: `e-${source}-${screenId}`, source, target: screenId, style: { stroke: color, strokeWidth: 1.5, opacity: 0.5 }, animated: true })
         })
       })
     })
