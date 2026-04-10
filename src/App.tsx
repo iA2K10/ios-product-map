@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -6,6 +6,8 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   Node,
   Edge,
   BackgroundVariant,
@@ -18,6 +20,7 @@ import { CategoryNode } from './nodes/CategoryNode'
 import { FlowNode } from './nodes/FlowNode'
 import { ScreenNode } from './nodes/ScreenNode'
 import { ScreenPanel } from './components/ScreenPanel'
+import { layoutNodes } from './layout'
 
 const nodeTypes = {
   center: CenterNode,
@@ -59,7 +62,15 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Other': '#94a3b8',
 }
 
-function buildInitialNodes(): { nodes: Node[]; edges: Edge[] } {
+// Use import.meta.env.BASE_URL so paths work on both localhost and GitHub Pages
+const BASE = import.meta.env.BASE_URL
+
+function getScreenshotPath(file: string): string {
+  const relative = file.replace('screens_extracted/', '')
+  return `${BASE}screens/${relative}`
+}
+
+function buildInitialGraph(): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = []
   const edges: Edge[] = []
 
@@ -71,19 +82,13 @@ function buildInitialNodes(): { nodes: Node[]; edges: Edge[] } {
   })
 
   const categories = Object.entries(data.categories) as [string, FlowData[]][]
-  const totalCategories = categories.length
-  const categoryRadius = 450
 
-  categories.forEach(([catName, flows], catIndex) => {
-    const angle = (catIndex / totalCategories) * 2 * Math.PI - Math.PI / 2
-    const x = Math.cos(angle) * categoryRadius
-    const y = Math.sin(angle) * categoryRadius
-
+  categories.forEach(([catName, flows]) => {
     const catId = `cat-${catName}`
     nodes.push({
       id: catId,
       type: 'category',
-      position: { x: x - 120, y: y - 30 },
+      position: { x: 0, y: 0 },
       data: {
         label: catName,
         flowCount: flows.length,
@@ -91,7 +96,6 @@ function buildInitialNodes(): { nodes: Node[]; edges: Edge[] } {
         color: CATEGORY_COLORS[catName] || '#94a3b8',
       },
     })
-
     edges.push({
       id: `e-center-${catId}`,
       source: 'center',
@@ -100,11 +104,13 @@ function buildInitialNodes(): { nodes: Node[]; edges: Edge[] } {
     })
   })
 
-  return { nodes, edges }
+  const laid = layoutNodes(nodes, edges, 'LR')
+  return { nodes: laid, edges }
 }
 
-export default function App() {
-  const initial = useMemo(() => buildInitialNodes(), [])
+function ProductMap() {
+  const { fitView } = useReactFlow()
+  const initial = buildInitialGraph()
   const [nodes, setNodes, onNodesChange] = useNodesState(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initial.edges)
   const expandedCatsRef = useRef<Set<string>>(new Set())
@@ -112,55 +118,55 @@ export default function App() {
   const [selectedScreen, setSelectedScreen] = useState<ScreenData | null>(null)
   const [selectedFlow, setSelectedFlow] = useState<FlowData | null>(null)
 
+  const relayout = useCallback((newNodes: Node[], newEdges: Edge[]) => {
+    const laid = layoutNodes(newNodes, newEdges, 'LR')
+    setNodes(laid)
+    setEdges(newEdges)
+    setTimeout(() => fitView({ padding: 0.2, duration: 400 }), 50)
+  }, [setNodes, setEdges, fitView])
+
   const toggleCategory = useCallback((catName: string) => {
     const categories = data.categories as Record<string, FlowData[]>
     const flows = categories[catName] || []
+    const color = CATEGORY_COLORS[catName] || '#94a3b8'
 
     if (expandedCatsRef.current.has(catName)) {
-      // Collapse
       expandedCatsRef.current.delete(catName)
       const flowIds = new Set(flows.map(f => `flow-${f.name}`))
       const screenIds = new Set<string>()
-      flows.forEach(f => f.screens.forEach(s => screenIds.add(`screen-${s.id}`)))
-      flows.forEach(f => expandedFlowsRef.current.delete(f.name))
+      flows.forEach(f => {
+        expandedFlowsRef.current.delete(f.name)
+        f.screens.forEach(s => screenIds.add(`screen-${s.id}`))
+      })
 
-      setNodes(nds => nds.filter(n => !flowIds.has(n.id) && !screenIds.has(n.id)))
-      setEdges(eds => eds.filter(e =>
-        !flowIds.has(e.source) && !flowIds.has(e.target) &&
-        !screenIds.has(e.source) && !screenIds.has(e.target)
-      ))
+      setNodes(curr => {
+        const nextNodes = curr.filter(n => !flowIds.has(n.id) && !screenIds.has(n.id))
+        setEdges(currEdges => {
+          const nextEdges = currEdges.filter(e =>
+            !flowIds.has(e.source) && !flowIds.has(e.target) &&
+            !screenIds.has(e.source) && !screenIds.has(e.target)
+          )
+          const laid = layoutNodes(nextNodes, nextEdges, 'LR')
+          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          return nextEdges
+        })
+        return nextNodes
+      })
     } else {
-      // Expand
       expandedCatsRef.current.add(catName)
 
-      setNodes(currentNodes => {
-        const catNode = currentNodes.find(n => n.id === `cat-${catName}`)
-        if (!catNode) return currentNodes
-
-        const existingIds = new Set(currentNodes.map(n => n.id))
-        const catX = catNode.position.x + 120
-        const catY = catNode.position.y + 30
-        const flowRadius = 350
-        const color = CATEGORY_COLORS[catName] || '#94a3b8'
-
+      setNodes(curr => {
+        const existingIds = new Set(curr.map(n => n.id))
         const newNodes: Node[] = []
-        const newEdgesList: Edge[] = []
+        const newEdges: Edge[] = []
 
-        flows.forEach((flow, i) => {
+        flows.forEach((flow) => {
           const flowId = `flow-${flow.name}`
           if (existingIds.has(flowId)) return
-
-          const angle = ((i / flows.length) * Math.PI * 1.2) - Math.PI * 0.6
-          const baseAngle = Math.atan2(catY, catX)
-          const fAngle = baseAngle + angle * 0.5
-
-          const fx = catX + Math.cos(fAngle) * flowRadius
-          const fy = catY + Math.sin(fAngle) * flowRadius
-
           newNodes.push({
             id: flowId,
             type: 'flow',
-            position: { x: fx - 100, y: fy - 25 },
+            position: { x: 0, y: 0 },
             data: {
               label: flow.name,
               screenCount: flow.screens.length,
@@ -168,8 +174,7 @@ export default function App() {
               color,
             },
           })
-
-          newEdgesList.push({
+          newEdges.push({
             id: `e-cat-${catName}-${flowId}`,
             source: `cat-${catName}`,
             target: flowId,
@@ -177,76 +182,70 @@ export default function App() {
           })
         })
 
-        if (newEdgesList.length > 0) {
-          setEdges(currentEdges => {
-            const existingEdgeIds = new Set(currentEdges.map(e => e.id))
-            const dedupedEdges = newEdgesList.filter(e => !existingEdgeIds.has(e.id))
-            return [...currentEdges, ...dedupedEdges]
-          })
-        }
-
-        return [...currentNodes, ...newNodes]
+        const allNodes = [...curr, ...newNodes]
+        setEdges(currEdges => {
+          const existingEdgeIds = new Set(currEdges.map(e => e.id))
+          const dedupedEdges = newEdges.filter(e => !existingEdgeIds.has(e.id))
+          const allEdges = [...currEdges, ...dedupedEdges]
+          const laid = layoutNodes(allNodes, allEdges, 'LR')
+          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          return allEdges
+        })
+        return allNodes
       })
     }
-  }, [setNodes, setEdges])
+  }, [setNodes, setEdges, fitView])
 
   const toggleFlow = useCallback((flowName: string) => {
     const flow = (data.flows as Record<string, FlowData>)[flowName]
     if (!flow) return
 
     if (expandedFlowsRef.current.has(flowName)) {
-      // Collapse
       expandedFlowsRef.current.delete(flowName)
       const screenIds = new Set(flow.screens.map(s => `screen-${s.id}`))
-      setNodes(nds => nds.filter(n => !screenIds.has(n.id)))
-      setEdges(eds => eds.filter(e => !screenIds.has(e.source) && !screenIds.has(e.target)))
+
+      setNodes(curr => {
+        const nextNodes = curr.filter(n => !screenIds.has(n.id))
+        setEdges(currEdges => {
+          const nextEdges = currEdges.filter(e => !screenIds.has(e.source) && !screenIds.has(e.target))
+          const laid = layoutNodes(nextNodes, nextEdges, 'LR')
+          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          return nextEdges
+        })
+        return nextNodes
+      })
     } else {
-      // Expand
       expandedFlowsRef.current.add(flowName)
 
-      setNodes(currentNodes => {
-        const flowNode = currentNodes.find(n => n.id === `flow-${flowName}`)
-        if (!flowNode) return currentNodes
-
-        const existingIds = new Set(currentNodes.map(n => n.id))
-        const fx = flowNode.position.x + 100
-        const fy = flowNode.position.y + 25
-        const baseAngle = Math.atan2(fy, fx)
-
+      setNodes(curr => {
+        const existingIds = new Set(curr.map(n => n.id))
         const newNodes: Node[] = []
-        const newEdgesList: Edge[] = []
+        const newEdges: Edge[] = []
 
         flow.screens.forEach((screen, i) => {
           const screenId = `screen-${screen.id}`
           if (existingIds.has(screenId)) return
-
-          const offset = (i - (flow.screens.length - 1) / 2) * 200
-          const perpAngle = baseAngle + Math.PI / 2
-          const sx = fx + Math.cos(baseAngle) * 300 + Math.cos(perpAngle) * offset
-          const sy = fy + Math.sin(baseAngle) * 300 + Math.sin(perpAngle) * offset
-
           newNodes.push({
             id: screenId,
             type: 'screen',
-            position: { x: sx - 80, y: sy - 60 },
+            position: { x: 0, y: 0 },
             data: {
               ...screen,
-              screenshotPath: `/screens/${screen.file.replace('screens_extracted/', '')}`,
+              screenshotPath: getScreenshotPath(screen.file),
             },
           })
 
           if (i === 0) {
-            newEdgesList.push({
+            newEdges.push({
               id: `e-flow-${flowName}-${screenId}`,
               source: `flow-${flowName}`,
               target: screenId,
               style: { stroke: '#4a5068', strokeWidth: 1.5 },
               animated: true,
             })
-          }
-          if (i > 0) {
+          } else {
             const prevId = `screen-${flow.screens[i - 1].id}`
-            newEdgesList.push({
+            newEdges.push({
               id: `e-${prevId}-${screenId}`,
               source: prevId,
               target: screenId,
@@ -256,18 +255,19 @@ export default function App() {
           }
         })
 
-        if (newEdgesList.length > 0) {
-          setEdges(currentEdges => {
-            const existingEdgeIds = new Set(currentEdges.map(e => e.id))
-            const dedupedEdges = newEdgesList.filter(e => !existingEdgeIds.has(e.id))
-            return [...currentEdges, ...dedupedEdges]
-          })
-        }
-
-        return [...currentNodes, ...newNodes]
+        const allNodes = [...curr, ...newNodes]
+        setEdges(currEdges => {
+          const existingEdgeIds = new Set(currEdges.map(e => e.id))
+          const dedupedEdges = newEdges.filter(e => !existingEdgeIds.has(e.id))
+          const allEdges = [...currEdges, ...dedupedEdges]
+          const laid = layoutNodes(allNodes, allEdges, 'LR')
+          setTimeout(() => { setNodes(laid); fitView({ padding: 0.2, duration: 400 }) }, 10)
+          return allEdges
+        })
+        return allNodes
       })
     }
-  }, [setNodes, setEdges])
+  }, [setNodes, setEdges, fitView])
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === 'category') {
@@ -292,7 +292,7 @@ export default function App() {
         onNodeClick={onNodeClick}
         nodeTypes={nodeTypes}
         fitView
-        minZoom={0.05}
+        minZoom={0.02}
         maxZoom={2}
         defaultEdgeOptions={{ type: 'default' }}
       >
@@ -338,5 +338,13 @@ export default function App() {
         />
       )}
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <ReactFlowProvider>
+      <ProductMap />
+    </ReactFlowProvider>
   )
 }

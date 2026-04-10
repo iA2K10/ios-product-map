@@ -25,7 +25,8 @@ export function ScreenPanel({ screen, flow, onClose, onNavigate }: Props) {
   const currentIndex = flow.screens.findIndex(s => s.id === screen.id)
   const prevScreen = currentIndex > 0 ? flow.screens[currentIndex - 1] : null
   const nextScreen = currentIndex < flow.screens.length - 1 ? flow.screens[currentIndex + 1] : null
-  const screenshotPath = `/screens/${screen.file.replace('screens_extracted/', '')}`
+  const BASE = import.meta.env.BASE_URL
+  const screenshotPath = `${BASE}screens/${screen.file.replace('screens_extracted/', '')}`
 
   return (
     <div style={{
