@@ -28,10 +28,8 @@ export function ScreenNode({ data }: { data: ScreenNodeData }) {
     }}>
       <div style={{
         width: '100%',
-        height: 200,
         background: '#0a0c14',
         overflow: 'hidden',
-        position: 'relative',
       }}>
         <img
           src={data.screenshotPath}
@@ -39,7 +37,7 @@ export function ScreenNode({ data }: { data: ScreenNodeData }) {
           style={{
             width: '100%',
             display: 'block',
-            marginBottom: -16,
+            clipPath: 'inset(0 0 4% 0)',
           }}
           loading="lazy"
         />

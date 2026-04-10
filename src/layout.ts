@@ -6,7 +6,7 @@ const NODE_DIMENSIONS: Record<string, { width: number; height: number }> = {
   category: { width: 240, height: 65 },
   tab: { width: 240, height: 75 },
   flow: { width: 220, height: 55 },
-  screen: { width: 170, height: 280 },
+  screen: { width: 170, height: 380 },
 }
 
 export function layoutNodes(
