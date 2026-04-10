@@ -243,8 +243,10 @@ function ProductMap() {
 
       setNodes(curr => {
         const next = curr.filter(n => !flowIds.has(n.id) && !screenIds.has(n.id))
+          .map(n => n.id === `tab-${tabName}` ? { ...n, data: { ...n.data, expanded: false } } : n)
         setEdges(ce => {
           const ne = ce.filter(e => !flowIds.has(e.source) && !flowIds.has(e.target) && !screenIds.has(e.source) && !screenIds.has(e.target))
+            .map(e => e.id === `e-center-tab-${tabName}` ? { ...e, style: { ...e.style, opacity: EDGE_OPACITY } } : e)
           relayoutAfterChange(next, ne); return ne
         })
         return next
@@ -257,8 +259,10 @@ function ProductMap() {
           const fid = `mflow-${fn}`; if (ids.has(fid)) return
           const f = allFlows[fn]; if (!f) return
           nn.push({ id: fid, type: 'flow', position: { x: 0, y: 0 }, data: { label: fn, screenCount: f.screens.length, flowNumber: f.flowNumber, color: section.color } })
-          ne.push({ id: `e-tab-${tabName}-${fid}`, source: `tab-${tabName}`, target: fid, style: { stroke: section.color, strokeWidth: 1.5, opacity: EDGE_OPACITY } })
+          ne.push({ id: `e-tab-${tabName}-${fid}`, source: `tab-${tabName}`, target: fid, style: { stroke: section.color, strokeWidth: 1.5, opacity: 0.5 } })
         })
+        // Mark tab as expanded and boost center→tab edge
+        const updated = curr.map(n => n.id === `tab-${tabName}` ? { ...n, data: { ...n.data, expanded: true } } : n)
 
         // Add cross-flow links between visible flow nodes
         const allVisible = new Set([...ids, ...nn.map(n => n.id)])
@@ -270,8 +274,13 @@ function ProductMap() {
           }
         })
 
-        const all = [...curr, ...nn]
-        setEdges(ce => { const eids = new Set(ce.map(e => e.id)); const ae = [...ce, ...ne.filter(e => !eids.has(e.id))]; relayoutAfterChange(all, ae); return ae })
+        const all = [...updated, ...nn]
+        setEdges(ce => {
+          const boosted = ce.map(e => e.id === `e-center-tab-${tabName}` ? { ...e, style: { ...e.style, opacity: 0.5 } } : e)
+          const eids = new Set(boosted.map(e => e.id))
+          const ae = [...boosted, ...ne.filter(e => !eids.has(e.id))]
+          relayoutAfterChange(all, ae); return ae
+        })
         return all
       })
     }

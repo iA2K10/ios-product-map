@@ -6,27 +6,31 @@ interface TabNodeData {
   groupCount: number
   screenCount: number
   color: string
+  expanded?: boolean
 }
 
 export function TabNode({ data }: { data: TabNodeData }) {
+  const borderOpacity = data.expanded ? '80' : '50'
+  const shadowOpacity = data.expanded ? '30' : '10'
+
   return (
     <div style={{
       padding: '14px 22px',
       background: '#1a1d27',
-      border: `1.5px solid ${data.color}50`,
+      border: `1.5px solid ${data.color}${borderOpacity}`,
       borderRadius: 14,
       cursor: 'pointer',
       transition: 'all 0.2s',
       minWidth: 220,
-      boxShadow: `0 0 20px ${data.color}10`,
+      boxShadow: `0 0 20px ${data.color}${shadowOpacity}`,
     }}
     onMouseEnter={(e) => {
       e.currentTarget.style.borderColor = `${data.color}90`
       e.currentTarget.style.boxShadow = `0 0 25px ${data.color}25`
     }}
     onMouseLeave={(e) => {
-      e.currentTarget.style.borderColor = `${data.color}50`
-      e.currentTarget.style.boxShadow = `0 0 20px ${data.color}10`
+      e.currentTarget.style.borderColor = `${data.color}${borderOpacity}`
+      e.currentTarget.style.boxShadow = `0 0 20px ${data.color}${shadowOpacity}`
     }}>
       <div style={{
         display: 'flex',
