@@ -269,6 +269,65 @@ function ProductMap() {
     setCenter(x, y, { zoom, duration: 300 })
   }, [getZoom, setCenter])
 
+  const expandAll = useCallback(() => {
+    const allNodes: Node[] = []
+    const allEdges: Edge[] = []
+    const categories = data.categories as Record<string, FlowData[]>
+    const allFlowsData = data.flows as Record<string, FlowData>
+
+    // Center node
+    allNodes.push({ id: 'center', type: 'center', position: { x: 0, y: 0 }, data: { label: 'Mercari iOS App' } })
+
+    // Build full graph
+    Object.entries(categories).forEach(([catName, flows]) => {
+      const color = CATEGORY_COLORS[catName] || '#94a3b8'
+      const catId = `cat-${catName}`
+
+      allNodes.push({
+        id: catId, type: 'category', position: { x: 0, y: 0 },
+        data: { label: catName, flowCount: flows.length, screenCount: flows.reduce((s: number, f: FlowData) => s + f.screens.length, 0), color },
+      })
+      allEdges.push({ id: `e-center-${catId}`, source: 'center', target: catId, style: { stroke: color, strokeWidth: 2, opacity: 0.4 } })
+
+      flows.forEach((flow) => {
+        const flowId = `flow-${flow.name}`
+        allNodes.push({
+          id: flowId, type: 'flow', position: { x: 0, y: 0 },
+          data: { label: flow.name, screenCount: flow.screens.length, flowNumber: flow.flowNumber, color },
+        })
+        allEdges.push({ id: `e-${catId}-${flowId}`, source: catId, target: flowId, style: { stroke: color, strokeWidth: 1.5, opacity: 0.3 } })
+
+        const fullFlow = allFlowsData[flow.name]
+        if (!fullFlow) return
+        fullFlow.screens.forEach((screen, i) => {
+          const screenId = `screen-${screen.id}`
+          allNodes.push({
+            id: screenId, type: 'screen', position: { x: 0, y: 0 },
+            data: { ...screen, screenshotPath: getScreenshotPath(screen.file) },
+          })
+          const source = i === 0 ? flowId : `screen-${fullFlow.screens[i - 1].id}`
+          allEdges.push({ id: `e-${source}-${screenId}`, source, target: screenId, style: { stroke: '#4a5068', strokeWidth: 1.5 }, animated: true })
+        })
+      })
+    })
+
+    // Update refs
+    Object.keys(categories).forEach(c => expandedCatsRef.current.add(c))
+    Object.keys(allFlowsData).forEach(f => expandedFlowsRef.current.add(f))
+
+    const laid = layoutNodes(allNodes, allEdges, 'LR')
+    setNodes(() => laid)
+    setEdges(() => allEdges)
+  }, [setNodes, setEdges])
+
+  const collapseAll = useCallback(() => {
+    expandedCatsRef.current.clear()
+    expandedFlowsRef.current.clear()
+    const initial = buildInitialGraph()
+    setNodes(() => initial.nodes)
+    setEdges(() => initial.edges)
+  }, [setNodes, setEdges])
+
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (node.type === 'category') {
       toggleCategory(node.data.label as string)
@@ -327,6 +386,22 @@ function ProductMap() {
         </div>
         <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
           {Object.keys(data.flows).length} flows &middot; 245 screens &middot; Click to expand
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <button onClick={expandAll} style={{
+            padding: '6px 14px', fontSize: 12, fontWeight: 500,
+            background: '#252836', border: '1px solid #3a3f50', borderRadius: 6,
+            color: '#c8cdd8', cursor: 'pointer',
+          }}>
+            Expand All
+          </button>
+          <button onClick={collapseAll} style={{
+            padding: '6px 14px', fontSize: 12, fontWeight: 500,
+            background: '#252836', border: '1px solid #3a3f50', borderRadius: 6,
+            color: '#c8cdd8', cursor: 'pointer',
+          }}>
+            Collapse All
+          </button>
         </div>
       </div>
 
