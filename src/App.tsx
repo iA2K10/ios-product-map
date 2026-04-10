@@ -390,24 +390,74 @@ function ProductMap() {
     setNodes(() => g.nodes); setEdges(() => g.edges)
   }, [setNodes, setEdges])
 
+  // ─── highlight path to selected screen ───
+  const highlightedEdgesRef = useRef<Set<string>>(new Set())
+
+  const highlightPathTo = useCallback((screenNodeId: string) => {
+    setEdges(currEdges => {
+      // Build reverse map: target → edge
+      const targetToEdge = new Map<string, Edge[]>()
+      currEdges.forEach(e => {
+        const list = targetToEdge.get(e.target) || []
+        list.push(e)
+        targetToEdge.set(e.target, list)
+      })
+
+      // Walk backwards from screen to center
+      const pathEdgeIds = new Set<string>()
+      const queue = [screenNodeId]
+      const visited = new Set<string>()
+      while (queue.length > 0) {
+        const nodeId = queue.shift()!
+        if (visited.has(nodeId)) continue
+        visited.add(nodeId)
+        const incomingEdges = targetToEdge.get(nodeId) || []
+        incomingEdges.forEach(e => {
+          pathEdgeIds.add(e.id)
+          queue.push(e.source)
+        })
+      }
+
+      highlightedEdgesRef.current = pathEdgeIds
+      return currEdges.map(e => pathEdgeIds.has(e.id)
+        ? { ...e, style: { ...e.style, opacity: 0.8, strokeWidth: 2.5 } }
+        : e
+      )
+    })
+  }, [setEdges])
+
+  const clearHighlight = useCallback(() => {
+    const prev = highlightedEdgesRef.current
+    if (prev.size === 0) return
+    setEdges(currEdges => currEdges.map(e => prev.has(e.id)
+      ? { ...e, style: { ...e.style, opacity: EDGE_OPACITY, strokeWidth: e.style?.strokeWidth === 2.5 ? 2 : 1.5 } }
+      : e
+    ))
+    highlightedEdgesRef.current = new Set()
+  }, [setEdges])
+
   // ─── click handler ───
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node) => {
     if (activeView === 'feature') {
-      if (node.type === 'category') { toggleCategory(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
-      else if (node.type === 'flow') { toggleFlow(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
+      if (node.type === 'category') { clearHighlight(); toggleCategory(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
+      else if (node.type === 'flow') { clearHighlight(); toggleFlow(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
       else if (node.type === 'screen') {
         const fn = (node.data as ScreenData).flow; setSelectedScreen(node.data as ScreenData); setSelectedFlow(allFlows[fn] || null)
+        clearHighlight()
+        setTimeout(() => highlightPathTo(node.id), 20)
       }
     } else {
-      if (node.type === 'tab') { toggleTab(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
+      if (node.type === 'tab') { clearHighlight(); toggleTab(node.data.label as string); setTimeout(() => centerOnNode(node), 60) }
       else if (node.type === 'flow') {
-        toggleMapFlow(node.data.label as string); setTimeout(() => centerOnNode(node), 60)
+        clearHighlight(); toggleMapFlow(node.data.label as string); setTimeout(() => centerOnNode(node), 60)
       }
       else if (node.type === 'screen') {
         const fn = (node.data as ScreenData).flow; setSelectedScreen(node.data as ScreenData); setSelectedFlow(allFlows[fn] || null)
+        clearHighlight()
+        setTimeout(() => highlightPathTo(node.id), 20)
       }
     }
-  }, [activeView, toggleCategory, toggleFlow, toggleTab, toggleMapFlow, centerOnNode, allFlows])
+  }, [activeView, toggleCategory, toggleFlow, toggleTab, toggleMapFlow, centerOnNode, allFlows, highlightPathTo, clearHighlight])
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -469,7 +519,7 @@ function ProductMap() {
       {selectedScreen && selectedFlow && (
         <ScreenPanel
           screen={selectedScreen} flow={selectedFlow}
-          onClose={() => { setSelectedScreen(null); setSelectedFlow(null) }}
+          onClose={() => { setSelectedScreen(null); setSelectedFlow(null); clearHighlight() }}
           onNavigate={(screen) => setSelectedScreen(screen)}
         />
       )}
